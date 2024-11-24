@@ -1,16 +1,21 @@
-from psycopg import rows, AsyncConnection
+from aiosqlite import connect, Connection
 from .domain import Player
 
 
 class Session:
     @classmethod
     async def connect(cls) -> "Session":
-        async with await AsyncConnection.connect("dbname=test user=postgres") as conn:
-            return cls(conn)
+        conn = await connect("sample.sqlite")
+        cursor = await conn.execute("CREATE TABLE IF NOT EXISTS players (name TEXT, id INTEGER PRIMARY KEY)")
+        await cursor.close()
+        return cls(conn)
 
-    def __init__(self, conn: AsyncConnection):
+    def __init__(self, conn: Connection):
         self.conn = conn
 
-    async def insert_hero(self, name: str) -> Player:
-        async with self.conn.cursor(row_factory=rows.class_row(Player)) as acur:
-            return await acur.fetchone("INSERT INTO heroes (name) VALUES (%s) RETURNING id, name;", name)
+    async def create_player(self, name: str) -> Player:
+        cursor = await self.conn.execute("INSERT INTO players (name) VALUES (?) RETURNING id, name;", [name])
+        player_tuple = await cursor.fetchone()
+        await self.conn.commit()
+        await cursor.close()
+        return Player(id=player_tuple[0], name=player_tuple[1])

@@ -9,7 +9,7 @@ db_session = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global db_session
-    db_session = Session.connect()
+    db_session = await Session.connect()
     yield
     # Clean up the db session
     db_session = None
